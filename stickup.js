@@ -6,7 +6,7 @@
      * @param options.$target {selector} 要设置的元素
      * @param [options.$scroll] {selector} 滚动元素,默认:$(window)
      * @param [options.offset] {number} 偏移量 默认:0
-     * @param [options.debug] {boolean} 显示debug信息
+     * @param [options.debug=false] {boolean} 显示debug信息
      *
      * @requires jQuery
      * @constructor
@@ -26,6 +26,7 @@
         this.init();
     }
 
+    // TODO aHao 16/2/16 边界时抖动
     Stickup.prototype.init = function () {
         var that    = this;
         var options = this.options;
@@ -38,11 +39,11 @@
 
         var $targetWrap = $target.parent();
 
-        this.onShow(function () {
+        this.onStatic(function triStatic () {
             $target.attr('style', this.targetInitStyle).addClass('stickup-hide');
         });
 
-        this.onHide(function () {
+        this.onShow(function triShow () {
             $target.css({
                 position: 'fixed',
                 width   : '100%',
@@ -62,24 +63,26 @@
         });
 
         // 预先触发一次
-        onScrollFn();
+        setTimeout(function () {
+            onScrollFn();
+        }, 1500);
 
         // onScrollFn
         function onScrollFn () {
             var targetWrapTop = $targetWrap[0].getBoundingClientRect().top;
             var scrollHeight  = $scroll.height();
             var dist          = targetWrapTop - scrollHeight - offset;
-            var isShow        = dist <= 0;
+            var isStatic      = dist >= 0;
 
             // 发送事件
-            $scroll.trigger('stickup:' + isShow);
+            $scroll.trigger('stickup:' + isStatic);
 
             if (options.debug) {
                 console.log('targetWrapTop', targetWrapTop);
                 console.log('scrollHeight', scrollHeight);
                 console.log('dist', dist);
                 console.log('offset', offset);
-                console.log('isShow', isShow);
+                console.log('isStatic', isStatic);
             }
         }
     };
@@ -93,19 +96,19 @@
     };
 
     /**
+     * onStatic事件
+     * @param fn
+     */
+    Stickup.prototype.onStatic = function (fn) {
+        this.options.$scroll.on('stickup:false', fn.bind(this));
+    };
+
+    /**
      * onShow事件
      * @param fn
      */
     Stickup.prototype.onShow = function (fn) {
         this.options.$scroll.on('stickup:true', fn.bind(this));
-    };
-
-    /**
-     * onHide事件
-     * @param fn
-     */
-    Stickup.prototype.onHide = function (fn) {
-        this.options.$scroll.on('stickup:false', fn.bind(this));
     };
 
     /**
