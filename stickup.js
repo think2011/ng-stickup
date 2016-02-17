@@ -6,6 +6,8 @@
      * @param options.$target {selector} 要设置的元素
      * @param [options.$scroll] {selector} 滚动元素,默认:$(window)
      * @param [options.offset] {number} 偏移量 默认:0
+     * @param [options.position=bottom] {string} 方向
+     * @param [options.targetFollow=false] {boolean} target根据scroll的scrollTop
      * @param [options.debug=false] {boolean} 显示debug信息
      *
      * @requires jQuery
@@ -13,9 +15,11 @@
      */
     function Stickup (options) {
         var defaults = {
-            $scroll: $(window),
-            offset : 0,
-            debug  : false
+            $scroll     : $(window),
+            offset      : 0,
+            position    : 'bottom',
+            targetFollow: false,
+            debug       : false
         };
 
         options = $.extend(defaults, options);
@@ -26,7 +30,6 @@
         this.init();
     }
 
-    // TODO aHao 16/2/16 边界时抖动
     Stickup.prototype.init = function () {
         var that    = this;
         var options = this.options;
@@ -40,16 +43,27 @@
         var $targetWrap = $target.parent();
 
         this.onStatic(function triStatic () {
-            $target.attr('style', this.targetInitStyle).addClass('stickup-hide');
+            // 取消占位
+            $targetWrap.css({
+                marginTop: 0
+            });
+            $target.attr('style', this.targetInitStyle).removeClass('stickup-show').addClass('stickup-hide');
         });
 
         this.onShow(function triShow () {
+            var scrolTop = options.position === 'top' ? $scroll.scrollTop() : -$scroll.scrollTop();
+
+            // 占位
+            $targetWrap.css({
+                marginTop: $target.outerHeight(true)
+            });
+
             $target.css({
-                position: 'fixed',
-                width   : '100%',
-                bottom  : 0,
-                zIndex  : 999999
-            }).addClass('stickup-show');
+                position          : 'fixed',
+                width             : $targetWrap.width(),
+                [options.position]: options.targetFollow ? scrolTop : 0,
+                zIndex            : 999999
+            }).removeClass('stickup-hide').addClass('stickup-show');
         });
 
         this.onScroll(function () {
@@ -59,30 +73,34 @@
             setTimeout(function () {
                 onScrollFn();
                 that.busying = false;
-            }, 100);
+            }, 0);
         });
 
         // 预先触发一次
         setTimeout(function () {
             onScrollFn();
-        }, 1500);
+        }, 1000);
 
         // onScrollFn
         function onScrollFn () {
-            var targetWrapTop = $targetWrap[0].getBoundingClientRect().top;
-            var scrollHeight  = $scroll.height();
-            var dist          = targetWrapTop - scrollHeight - offset;
-            var isStatic      = dist >= 0;
+            var targetWrapTop     = $targetWrap[0].getBoundingClientRect().top;
+            var scrollHeight      = $scroll.height();
+            var targetOuterHeight = $target.outerHeight(true);
+            var dist              = targetWrapTop - scrollHeight - offset;
+            var isStickup         = dist > 0;
 
             // 发送事件
-            $scroll.trigger('stickup:' + isStatic);
+            $scroll.trigger('stickup:' + isStickup);
 
             if (options.debug) {
+                console.log('=== stickup ===');
                 console.log('targetWrapTop', targetWrapTop);
+                console.log('targetOuterHeight', targetOuterHeight);
                 console.log('scrollHeight', scrollHeight);
                 console.log('dist', dist);
                 console.log('offset', offset);
-                console.log('isStatic', isStatic);
+                console.log('isStickup', isStickup);
+                console.log('=== stickup ===');
             }
         }
     };
